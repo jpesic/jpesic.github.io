@@ -1,0 +1,105 @@
+---
+title: "Practical Machine Learning Writeup"
+author: "jpesic"
+date: "March 15, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict if the barbell lifts are performed correctly. 
+The subjects were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+## Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+# Data Import
+
+```{r data import, message=FALSE}
+require(readr)
+setwd("~/R Scripts/R for Data Science/Machine Learning/Final Project")
+
+pml_training <- read_csv("pml-training.csv")
+pml_testing <- read_csv("pml-testing.csv")
+```
+
+# Data Cleaning
+
+Columns with missing inputs are identified; a new data frame without those columns is generate. In addition, columns without general predictive values (subject names/time stamps) are deleted from the training data frame. "Classe" column is converted to factor format.
+
+```{r data clean}
+columns<-sapply(pml_training, function(x) !any(is.na(x)))
+pml_training_na<-pml_training[,colnames(pml_training)%in%names(which(columns==TRUE))]
+training<-pml_training_na[,8:57]
+training$classe<-as.factor(training$classe)
+```
+
+
+## Modeling 
+
+Thusly generated "training" dataframe is split into two data.frames, one for trainig purposes and another for validation. "RandomForest" package is used to model the data.  
+
+```{r model}
+require(caret)
+require(randomForest)
+set.seed(123)
+#splt orignal training model into two
+inTrain <- createDataPartition(training$classe, p = 0.70, list = FALSE)
+validation <- training[-inTrain, ]
+training_new <- training[inTrain, ]
+
+# try train (random Forest)
+model1<-randomForest(classe~., data=training_new)
+
+```
+
+## Validation
+
+"validation" data frame is used to validate Random Forest model. The accuracy of the model is  calculated from the number of the off-diagonal (misidentified) elements. The accuracy is >0.993.
+```{r validate, echo=TRUE}
+
+validate1<-predict(model1, validation)
+
+table(validate1, validation$classe)
+
+
+```
+
+## Final Quiz (Testing) Data Prediction
+
+Testing data frame is processed to include the same columns as used to train the model. Then, the final prediction is generated.
+
+```{r test, echo=TRUE}
+
+param<-colnames(training_new)
+
+testing<-pml_testing[,colnames(pml_testing)%in%param]
+
+head(testing)
+
+quiz_prediction<-predict(model1, testing)
+
+print(quiz_prediction)
+
+
+```
+
+
+
+
+
+
